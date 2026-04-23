@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const { type, platform, style, topic } = req.body;
@@ -39,38 +39,23 @@ module.exports = async function handler(req, res) {
 影片主題：${topic}`;
 
   try {
-    const https = require('https');
-    const body = JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      max_tokens: 1000
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 1000
+      })
     });
-
-    const result = await new Promise((resolve, reject) => {
-      const options = {
-        hostname: 'api.openai.com',
-        path: '/v1/chat/completions',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Length': Buffer.byteLength(body)
-        }
-      };
-      const req2 = https.request(options, (res2) => {
-        let data = '';
-        res2.on('data', chunk => data += chunk);
-        res2.on('end', () => resolve(JSON.parse(data)));
-      });
-      req2.on('error', reject);
-      req2.write(body);
-      req2.end();
-    });
-
-    const text = result.choices?.[0]?.message?.content || '生成失敗，請再試一次。';
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content || '生成失敗，請再試一次。';
     res.status(200).json({ result: text });
   } catch(e) {
     res.status(500).json({ error: e.message });
