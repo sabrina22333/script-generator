@@ -1,208 +1,190 @@
-const https = require('https');
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>短影音腳本生成器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;
+  --bg2:#f7f8fa;
+  --bg3:#eef0f4;
+  --border:#e0e3ea;
+  --border2:#c8cdd8;
+  --text:#1a1d23;
+  --text2:#5a6070;
+  --text3:#9aa0b0;
+  --accent:#1e3a5f;
+  --accent2:#2d5a8e;
+  --accent-bg:#e8f0fa;
+  --accent-border:#a8c4e8;
+  --green:#1a7a4a;
+  --green-bg:#e8f5ee;
+}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.page{max-width:680px;margin:0 auto;padding:3rem 1.5rem 5rem}
+.header{text-align:center;margin-bottom:3rem}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;border:1px solid var(--accent-border);background:var(--accent-bg);font-size:12px;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;margin-bottom:1.25rem;font-weight:600}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+h1{font-size:clamp(28px,5vw,40px);font-weight:900;letter-spacing:-1.5px;line-height:1.15;margin-bottom:0.75rem;color:var(--text)}
+h1 span{color:var(--accent2)}
+.subtitle{font-size:14px;color:var(--text2);font-weight:300}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:0.75rem}
+.label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:7px 15px;border-radius:100px;font-size:13px;font-weight:400;border:1px solid var(--border);background:var(--bg);color:var(--text2);cursor:pointer;transition:all 0.2s;font-family:'Noto Sans TC',sans-serif;user-select:none}
+.chip:hover{border-color:var(--border2);color:var(--text)}
+.chip.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent2);font-weight:600}
+.topic-wrap{position:relative}
+textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-family:'Noto Sans TC',sans-serif;font-weight:300;padding:14px 16px;resize:none;height:88px;line-height:1.7;outline:none;transition:border-color 0.2s}
+textarea::placeholder{color:var(--text3)}
+textarea:focus{border-color:var(--accent2)}
+.char{position:absolute;right:12px;bottom:10px;font-size:11px;color:var(--text3)}
+.gen-btn{width:100%;padding:15px;border-radius:12px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:700;font-family:'Noto Sans TC',sans-serif;letter-spacing:0.5px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:1rem}
+.gen-btn:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 6px 24px rgba(30,58,95,0.2)}
+.gen-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none}
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:1rem;display:none}
+.result-card.visible{display:block}
+.result-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.result-tag{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--green)}
+.tag-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.copy-btn{padding:5px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg);color:var(--text2);font-size:12px;font-family:'Noto Sans TC',sans-serif;cursor:pointer;transition:all 0.15s}
+.copy-btn:hover{background:var(--bg3);color:var(--text)}
+.result-body{padding:1.5rem 1.75rem}
+#result-text{font-size:14px;line-height:2;color:var(--text);white-space:pre-wrap;font-weight:300;min-height:60px}
+.divider{height:1px;background:var(--border);margin:0.75rem 0}
+.footer{text-align:center;margin-top:3rem;font-size:12px;color:var(--text3)}
+@media(max-width:480px){.page{padding:2rem 1rem 4rem}.card{padding:1.25rem}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="badge"><div class="dot"></div>AI 腳本生成器</div>
+    <h1>30–50 秒<br><span>爆款腳本</span><br>即選即用</h1>
+    <p class="subtitle">選好設定 · 輸入主題 · 一鍵生成高完播率腳本</p>
+  </div>
 
-module.exports = (req, res) => {
-  if (req.method !== 'POST') { res.status(405).end(); return; }
+  <div class="card">
+    <div class="label">帳號類型</div>
+    <div class="chips">
+      <div class="chip active" data-group="type" data-val="AI自媒體">AI 自媒體</div>
+      <div class="chip" data-group="type" data-val="中古車業務">中古車業務</div>
+    </div>
+  </div>
 
-  const { type, scriptType, persona, style, topic } = req.body;
+  <div class="card">
+    <div class="label">腳本類型</div>
+    <div class="chips">
+      <div class="chip active" data-group="scriptType" data-val="藏鏡人互動版">藏鏡人互動版</div>
+      <div class="chip" data-group="scriptType" data-val="單人直述版">單人直述版</div>
+    </div>
+  </div>
 
-  const carTopics = `中古車業務50個主題：
-1.這5台中古車千萬不要買 2.為什麼同一台車價格差這麼多 3.車行說沒事故怎麼自己查 4.里程數真的可以被調嗎 5.貸款買車還是現金買車 6.中古車保固是真的嗎 7.買車前一定要做的三件事 8.這台車值不值得買 9.為什麼我不建議買太便宜的車 10.中古車業務不會告訴你的事 11.泡水車怎麼辨別 12.為什麼有些車特別便宜 13.買車時業務說的哪些話不能信 14.試車要注意什麼 15.車子過戶要注意什麼 16.中古車跟新車差在哪 17.哪些車型最保值 18.買車預算怎麼抓 19.為什麼有些車賣很久都賣不掉 20.車行為什麼一直推某幾台車 21.買車議價技巧 22.電動車值得買嗎 23.日系車跟德系車的差別 24.買車時不要帶這種朋友去 25.中古車驗車要花多少錢 26.買車被坑的真實故事 27.一個月養車要花多少錢 28.換車時舊車怎麼處理最划算 29.第一台車建議買什麼 30.為什麼有人買車後悔 31.買車時保險怎麼選 32.中古車市場的潛規則 33.為什麼我不怕客人殺價 34.中古車的隱藏費用 35.為什麼我會主動幫客人說不要買 36.月薪多少才適合買這台車 37.這台車我會不會買 38.車行最怕遇到這種客人 39.買車這件事教會我的事 40.這個動作讓你買車永遠買貴 41.買車帶老婆去有什麼差別 42.為什麼有些人買車特別順 43.車行跟車行之間的差別 44.買車前先做這一件事 45.為什麼我勸你不要買太新的車 46.車子顏色會影響價格嗎 47.業務推薦的車一定最好嗎 48.一個人開跟家庭用車選法不同 49.賓士BMW值得買嗎 50.你的預算我幫你選最適合的車`;
+  <div class="card" id="persona-card">
+    <div class="label">藏鏡人身份</div>
+    <div class="chips">
+      <div class="chip active" data-group="persona" data-val="自動判斷">✦ 自動判斷</div>
+      <div class="chip" data-group="persona" data-val="男女朋友">男女朋友</div>
+      <div class="chip" data-group="persona" data-val="夫妻">夫妻</div>
+      <div class="chip" data-group="persona" data-val="老闆員工">老闆員工</div>
+      <div class="chip" data-group="persona" data-val="朋友">朋友</div>
+      <div class="chip" data-group="persona" data-val="客人業務">客人業務</div>
+    </div>
+  </div>
 
-  const aiTopics = `AI自媒體50個主題：
-1.90%的人用ChatGPT都用錯了 2.這個AI功能幾乎沒人知道 3.我測試了10個AI工具只推這兩個 4.AI會取代創作者嗎 5.用AI寫文案跟自己寫的差別 6.免費AI工具比付費的更好用 7.我怎麼用AI規劃一個月的內容 8.AI生成的腳本為什麼都很爛 9.如何讓AI寫出你的語氣 10.短影音用AI的正確姿勢 11.我用AI做了什麼讓客戶嚇到 12.Claude跟ChatGPT我選哪個 13.為什麼我不怕AI取代我 14.AI工具讓我一個人當一個團隊 15.新手用AI最容易犯的錯 16.我用AI接案的真實收入 17.這個Prompt讓AI變得超好用 18.為什麼AI給的答案都很普通 19.學AI要從哪裡開始 20.AI能幫你做影片剪輯嗎 21.我用AI一天可以產出多少內容 22.為什麼有些人用AI越用越差 23.AI工具每個月要花多少錢 24.用AI做行銷的真實效果 25.我怎麼用AI準備會議 26.短影音腳本用AI寫的優缺點 27.AI讓我的工作流程改變了什麼 28.哪些工作AI真的可以取代 29.AI工具的隱藏費用 30.我怎麼訓練AI說話像我 31.AI改變了我對工作的看法 32.AI工具讓我不再加班 33.我用AI找到了新的商業模式 34.用AI一個月我省了多少錢 35.這個AI工具是免費的但沒人告訴你 36.你花錢訂閱ChatGPT Plus但沒用到最強功能 37.做短影音只需要這三個AI工具 38.說實話我一開始用AI做出來的東西很爛 39.別人外包要花5000我用AI自己做 40.你有沒有覺得AI給的答案都很像廢話 41.AI時代創作者要怎麼定位 42.為什麼有些人用AI越來越焦慮 43.用AI學新技能有多快 44.AI能幫你做競品分析嗎 45.我用AI翻譯內容給外國客戶 46.AI時代還需要學設計嗎 47.為什麼我每天都在用AI 48.用AI做SEO有效嗎 49.AI能幫你做財務規劃嗎 50.AI工具讓我不再需要團隊`;
+  <div class="card">
+    <div class="label">說話風格</div>
+    <div class="chips">
+      <div class="chip active" data-group="style" data-val="毒舌直接">毒舌直接</div>
+      <div class="chip" data-group="style" data-val="輕鬆幽默">輕鬆幽默</div>
+      <div class="chip" data-group="style" data-val="專業有力">專業有力</div>
+    </div>
+  </div>
 
-  const topics = type === '中古車業務' ? carTopics : aiTopics;
+  <div class="card">
+    <div class="label">影片主題 / 關鍵字</div>
+    <div class="topic-wrap">
+      <textarea id="topic" placeholder="例：第一次買中古車要注意什麼、用AI省時間、買車被坑的故事…" maxlength="200" oninput="document.getElementById('char').textContent=this.value.length+' / 200'"></textarea>
+      <span class="char" id="char">0 / 200</span>
+    </div>
+  </div>
 
-  const personaMap = {
-    '自動判斷': '根據主題自動選擇最有衝突感的關係',
-    '男女朋友': '藏鏡人是男友（鏡頭外聲音），業主是女友（鏡頭內）',
-    '夫妻': '藏鏡人是老公（鏡頭外聲音），業主是老婆（鏡頭內）',
-    '老闆員工': '藏鏡人是員工（鏡頭外聲音），業主是老闆（鏡頭內）',
-    '朋友': '藏鏡人是老朋友（鏡頭外聲音），業主是懂的那個朋友（鏡頭內）',
-    '客人業務': '藏鏡人是客人（鏡頭外聲音），業主是業務（鏡頭內）'
-  };
+  <button class="gen-btn" id="btn" onclick="generate()">
+    <span id="btn-text">✦ 立即生成腳本</span>
+  </button>
 
-  const coreValues = `
-短影音核心價值（每支腳本必須符合其中一個或兩個都有）：
+  <div class="result-card" id="result-card">
+    <div class="result-header">
+      <div class="result-tag" id="result-tag"><div class="tag-dot"></div>生成完成</div>
+      <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('result-text').textContent).then(()=>{this.textContent='已複製！';this.style.color='var(--green)';setTimeout(()=>{this.textContent='複製全文';this.style.color=''},2000)})">複製全文</button>
+    </div>
+    <div class="result-body"><div id="result-text"></div></div>
+  </div>
 
-逃離痛苦型：觸發恐懼、焦慮、憤怒、後悔
-→ 讓觀眾心裡有點痛，中段給解藥，結尾讓他覺得「還好我看了這支」
+  <div class="footer">由 AI 驅動 · 腳本僅供參考，建議加入個人風格後使用</div>
+</div>
 
-追求快樂型：觸發興奮、羨慕、期待、認同、爽感
-→ 開場給嚮往的畫面，中段讓他覺得「這我也做得到」，結尾給明確的第一步
+<script>
+const sel={type:'AI自媒體',scriptType:'藏鏡人互動版',persona:'自動判斷',style:'毒舌直接'};
 
-最強組合：先觸發逃離痛苦讓觀眾停下來，再用追求快樂讓觀眾看完`;
-
-  const styleGuide = {
-    '毒舌直接': `說話風格：毒舌直接型
-口頭禪：「幹」「真的假的」「最好是咧」「屁勒」
-說話原則：直接點出問題、不拐彎抹角、有點嗆但觀眾聽完覺得「對啊就是這樣」
-台詞範例：「這台車我自己不會買，屁勒，維修費比車還貴」「最好是咧，里程數這種東西調過你根本看不出來」`,
-    '輕鬆幽默': `說話風格：輕鬆幽默型
-說話原則：口語自然、有點好笑但不刻意、觀眾看完會想分享給朋友`,
-    '專業有力': `說話風格：專業有力型
-說話原則：有具體數字和案例、說話有份量、讓觀眾覺得你真的很懂`
-  };
-
-  let systemPrompt = '';
-
-  if (scriptType === '藏鏡人互動版') {
-    const personaDesc = personaMap[persona] || personaMap['自動判斷'];
-    systemPrompt = `你是一位有七年實戰經驗的短影音幕後操盤手，操作過百萬流量帳號。
-
-核心信念：觀眾不想看教學，他們想看真實的互動。藏鏡人是觀眾的代言人，他說出觀眾心裡的話，被業主的回答說服，這個說服感比直接教學強十倍。
-
-${coreValues}
-
-藏鏡人設定：${personaDesc}
-
-藏鏡人特質：
-- 有點懶、愛貪便宜、不想承認自己不懂
-- 至少要被懟兩次才點頭，不能第一次就服氣
-- 說話口語自然，偶爾嗆業主
-- 被說到沒話說的反應要真實：沉默、「喔」、「那算了」
-
-${styleGuide[style] || styleGuide['毒舌直接']}
-
-影響力三層目標：
-第一層：完播率（讓觀眾看完）
-第二層：共鳴+分享（觀眾覺得「這說的就是我」）
-第三層：行動觸發（私訊或追蹤）
-
-嚴格禁止：
-- 禁止「嘿大家好」「今天要跟大家分享」「首先接下來最後」
-- 禁止藏鏡人第一次就被說服
-- 禁止空洞結論，每句話要有具體內容
-- 禁止超過50秒
-- 禁止結尾超過兩句話
-
-參考主題庫：${topics}
-
-輸出格式：
-【影片主題】
-【目標秒數】（30-50秒）
-【核心價值】（逃離痛苦／追求快樂／兩者兼具）
-【藏鏡人身份】
-【影響力目標】
-
----
-
-【開場】
-藏鏡人：（台詞）
-業主：（台詞）
-
-【中段】
-藏鏡人：（第一個反對）
-業主：（有數字或案例的回答）
-藏鏡人：（不服氣，再追問）
-業主：（更強的回答，讓藏鏡人沒話說）
-
-【反轉】
-藏鏡人：（被懟到的真實反應）
-業主：（一句讓人無法反駁的話）
-
-【結尾】
-（一句話急收，觸發私訊或追蹤）
-
----
-
-【操盤手備註】
-・核心價值觸發點
-・最關鍵的情緒節點
-・觀眾看完會做什麼行動`;
-
-  } else {
-    systemPrompt = `你是一位有七年實戰經驗的短影音幕後操盤手，操作過百萬流量帳號。
-
-核心信念：觀眾不想看教學，他們想看真實的人說真實的話。爆款不是靠運氣，是靠精準觸發人性。
-
-${coreValues}
-
-${styleGuide[style] || styleGuide['毒舌直接']}
-
-影響力三層目標：
-第一層：完播率（讓觀眾看完）
-第二層：共鳴+分享（觀眾覺得「這說的就是我」）
-第三層：行動觸發（私訊或追蹤）
-
-爆款結構：
-開場（前3秒）：直接進入衝突，不解釋背景，不鋪陳，讓觀眾產生問號
-中段：給具體數字、工具或真實案例，有「反對問題」設計
-反轉：讓觀眾意想不到，有點刺，讓人想了一下才懂
-結尾：一句話急收，觸發行動
-
-嚴格禁止：
-- 禁止「嘿大家好」「今天要跟大家分享」「首先接下來最後」
-- 禁止空洞結論，每句話要有具體內容
-- 禁止超過50秒
-- 禁止結尾超過兩句話
-
-參考主題庫：${topics}
-
-輸出格式：
-【影片主題】
-【目標秒數】（30-50秒）
-【核心價值】（逃離痛苦／追求快樂／兩者兼具）
-【開場模式】
-【影響力目標】
-
----
-
-【開場】
-（台詞）
-
-【中段】
-（台詞，必須有具體數字或案例）
-
-【反轉】
-（讓觀眾意想不到的轉折）
-
-【結尾】
-（一句話急收，觸發私訊或追蹤）
-
----
-
-【操盤手備註】
-・核心價值觸發點
-・最關鍵的情緒節點
-・觀眾看完會做什麼行動`;
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll(`.chip[data-group="${c.dataset.group}"]`).forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  sel[c.dataset.group]=c.dataset.val;
+  if(c.dataset.group==='scriptType'){
+    document.getElementById('persona-card').style.display=c.dataset.val==='藏鏡人互動版'?'block':'none';
   }
+}));
 
-  const bodyData = JSON.stringify({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `帳號：${type}，腳本類型：${scriptType}，風格：${style}，主題：${topic}，請生成一支有影響力的爆款腳本。` }
-    ],
-    max_tokens: 1500
-  });
-
-  const options = {
-    hostname: 'api.openai.com',
-    path: '/v1/chat/completions',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY,
-      'Content-Length': Buffer.byteLength(bodyData)
-    }
-  };
-
-  const apiReq = https.request(options, (apiRes) => {
-    let data = '';
-    apiRes.on('data', chunk => { data += chunk; });
-    apiRes.on('end', () => {
-      try {
-        const json = JSON.parse(data);
-        const text = json.choices[0].message.content;
-        res.status(200).json({ result: text });
-      } catch(e) {
-        res.status(500).json({ error: data });
-      }
+async function generate(){
+  const topic=document.getElementById('topic').value.trim();
+  if(!topic){
+    const t=document.getElementById('topic');
+    t.focus();t.style.borderColor='#e05a5a';
+    setTimeout(()=>t.style.borderColor='',1500);
+    return;
+  }
+  const btn=document.getElementById('btn');
+  btn.disabled=true;
+  document.getElementById('btn-text').textContent='生成中…';
+  const rc=document.getElementById('result-card');
+  const rt=document.getElementById('result-text');
+  const tag=document.getElementById('result-tag');
+  rc.classList.add('visible');
+  rt.textContent='';
+  tag.innerHTML='<div class="tag-dot" style="background:var(--accent2)"></div> 生成中';
+  tag.style.color='var(--accent2)';
+  try{
+    const res=await fetch('/api/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        type:sel.type,
+        scriptType:sel.scriptType,
+        persona:sel.persona,
+        style:sel.style,
+        topic
+      })
     });
-  });
-
-  apiReq.on('error', (e) => { res.status(500).json({ error: e.message }); });
-  apiReq.write(bodyData);
-  apiReq.end();
-};
+    const data=await res.json();
+    rt.textContent=data.result||'生成失敗，請再試一次。';
+    tag.innerHTML='<div class="tag-dot"></div> 生成完成';
+    tag.style.color='var(--green)';
+    rc.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){
+    rt.textContent='發生錯誤，請稍後再試。';
+    tag.innerHTML='<div class="tag-dot" style="background:#e05a5a"></div> 發生錯誤';
+    tag.style.color='#e05a5a';
+  }
+  btn.disabled=false;
+  document.getElementById('btn-text').textContent='✦ 再生成一次';
+}
+</script>
+</body>
+</html>
